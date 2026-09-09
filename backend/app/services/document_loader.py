@@ -5,6 +5,7 @@
 '''
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, UnstructuredExcelLoader
+from langchain_core.documents import Document
 
 from app.utils.log import get_logger
 
@@ -13,6 +14,7 @@ logger = get_logger(__name__)
 
 class DocumentLoader:
     def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
+        self._ocr = None
         self._splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -27,6 +29,27 @@ class DocumentLoader:
     @staticmethod
     def _build_parent_chunk_id(filename: str, page_number: int) -> str:
         return f"{filename}::p{page_number}::parent"
+
+    def _ocr_pdf(self, file_path: str) -> list[Document]:
+        """扫描版 PDF 兜底：渲染页面成图后 OCR，结果包装回 Document 列表"""
+        import tempfile
+
+        import pymupdf
+        from rapidocr_onnxruntime import RapidOCR
+
+        if self._ocr is None:
+            self._ocr = RapidOCR()
+
+        documents = []
+        with pymupdf.open(file_path) as pdf:
+            for page_number, page in enumerate(pdf):
+                pix = page.get_pixmap(dpi=200)
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+                    pix.save(tmp.name)
+                    result, _ = self._ocr(tmp.name)
+                text = "\n".join(line[1] for line in (result or []) if line and len(line) >= 2)
+                documents.append(Document(page_content=text, metadata={"page": page_number}))
+        return documents
 
     def load_document(self, file_path: str, filename: str) -> list[dict]:
         file_lower = filename.lower()
@@ -46,6 +69,10 @@ class DocumentLoader:
 
         try:
             raw_docs = loader.load()
+            # 全部页都提不出文字说明是扫描件，转 OCR 识别
+            if doc_type == "PDF" and all(not (doc.page_content or "").strip() for doc in raw_docs):
+                logger.info("PDF无文字层，走OCR识别: %s", filename)
+                raw_docs = self._ocr_pdf(file_path)
             documents = []
 
             # 提取每个原始单元的正文文本

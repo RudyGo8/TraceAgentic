@@ -1,6 +1,7 @@
 from collections import Counter
 
 from app.core.config import AUTO_MERGE_ENABLED, AUTO_MERGE_THRESHOLD, LEAF_RETRIEVE_LEVEL
+from app.services.parent_chunk_store import parent_chunk_store
 from app.utils.log import get_logger
 logger = get_logger(__name__)
 
@@ -26,8 +27,6 @@ def auto_merge_chunks(results: list[dict], top_k: int = 5):
 
     if AUTO_MERGE_ENABLED_VALUE and results:
         try:
-            from app.services.parent_chunk_store import parent_chunk_store
-
             # 统计次数
             parent_counts = Counter(
                 item.get("parent_chunk_id", "") for item in results if item.get("parent_chunk_id")

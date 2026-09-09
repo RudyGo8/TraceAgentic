@@ -15,6 +15,7 @@ from app.schemas.auth import (
 from app.core.security import require_admin
 from app.utils.log import get_logger
 from app.services.milvus_service import milvus_service
+from app.services.milvus_writer import milvus_writer
 
 logger = get_logger(__name__)
 
@@ -48,8 +49,6 @@ def _escape_milvus_string(value: str) -> str:
 
 # 写入 milvus
 def _write_upload_to_milvus(file_path: Path, filename: str) -> int:
-    from app.services.milvus_writer import milvus_writer
-
     return milvus_writer.write_documents(str(file_path), filename)
 
 

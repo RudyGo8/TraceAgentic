@@ -2,6 +2,11 @@ from datetime import datetime
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
+from app.core.cache import cache
+from app.core.database import SessionLocal
+from app.models.db_chat_message import ChatMessage
+from app.models.db_chat_session import ChatSession
+from app.models.db_user import User
 from app.utils.log import get_logger
 
 logger = get_logger(__name__)
@@ -33,12 +38,6 @@ class ConversationStorage:
         return messages
 
     def save( self, user_id: str, session_id: str, messages: list, metadata: dict | None = None, extra_message_data: list | None = None):
-        from app.core.cache import cache
-        from app.core.database import SessionLocal
-        from app.models.db_chat_message import ChatMessage
-        from app.models.db_chat_session import ChatSession
-        from app.models.db_user import User
-
         db = SessionLocal()
         try:
             user = db.query(User).filter(User.username == user_id).first()
@@ -130,8 +129,6 @@ class ConversationStorage:
             db.close()
 
     def load(self, user_id: str, session_id: str) -> list:
-        from app.core.cache import cache
-
         # 先读缓存，命中后再转回 LangChain message 对象。
         cached = cache.get_json(self._messages_cache_key(user_id, session_id))
         if cached is not None:
@@ -147,12 +144,6 @@ class ConversationStorage:
 
     # 获取用户所有会话摘要信息
     def list_session_infos(self, user_id: str) -> list[dict]:
-        from app.core.cache import cache
-        from app.core.database import SessionLocal
-        from app.models.db_chat_message import ChatMessage
-        from app.models.db_chat_session import ChatSession
-        from app.models.db_user import User
-
         cached = cache.get_json(self._sessions_cache_key(user_id))
         if cached is not None:
             return cached
@@ -199,12 +190,6 @@ class ConversationStorage:
         finally:
             db.close()
     def get_session_messages(self, user_id: str, session_id: str) -> list[dict]:
-        from app.core.cache import cache
-        from app.core.database import SessionLocal
-        from app.models.db_chat_message import ChatMessage
-        from app.models.db_chat_session import ChatSession
-        from app.models.db_user import User
-
         cached = cache.get_json(self._messages_cache_key(user_id, session_id))
         if cached is not None:
             return cached
@@ -246,11 +231,6 @@ class ConversationStorage:
         finally:
             db.close()
     def delete_session(self, user_id: str, session_id: str) -> bool:
-        from app.core.cache import cache
-        from app.core.database import SessionLocal
-        from app.models.db_chat_session import ChatSession
-        from app.models.db_user import User
-
         db = SessionLocal()
         try:
             user = db.query(User).filter(User.username == user_id).first()

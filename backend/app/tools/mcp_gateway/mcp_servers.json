@@ -13,11 +13,11 @@
     "command": "python",
     "args": ["-m", "mysql_mcp_server.server"],
     "env": {
-      "MYSQL_HOST": "${MYSQL_MCP_HOST}",
-      "MYSQL_PORT": "${MYSQL_MCP_PORT}",
-      "MYSQL_USER": "${MYSQL_MCP_USERNAME}",
-      "MYSQL_PASSWORD": "${MYSQL_MCP_PASSWORD}",
-      "MYSQL_DATABASE": "${MYSQL_MCP_DATABASE}",
+      "MYSQL_HOST": "${MYSQL_HOST}",
+      "MYSQL_PORT": "${MYSQL_PORT}",
+      "MYSQL_USER": "${MYSQL_USERNAME}",
+      "MYSQL_PASSWORD": "${MYSQL_PASSWORD}",
+      "MYSQL_DATABASE": "${MYSQL_DATABASE}",
       "ALLOW_WRITE_OPERATIONS": "false"
     }
   },

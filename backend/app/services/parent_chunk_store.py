@@ -1,4 +1,6 @@
 from app.core.cache import cache
+from app.core.database import SessionLocal
+from app.models.db_parent_chunk import ParentChunk
 
 
 # 父级分块存储器
@@ -12,10 +14,7 @@ class ParentChunkStore:
         cached = cache.get_json(self._cache_key(chunk_id))
         if cached is not None:
             return cached
-        
-        from app.models.db_parent_chunk import ParentChunk
-        from app.core.database import SessionLocal
-        
+
         db = SessionLocal()
         try:
             row = db.query(ParentChunk).filter(ParentChunk.chunk_id == chunk_id).first()
@@ -33,9 +32,6 @@ class ParentChunkStore:
             db.close()
     
     def save_chunk(self, chunk_id: str, text: str, metadata: dict = None):
-        from app.models.db_parent_chunk import ParentChunk
-        from app.core.database import SessionLocal
-
         metadata = metadata or {}
         filename = (metadata.get("filename") or "").strip() or "unknown"
         file_type = (metadata.get("file_type") or "").strip()
@@ -82,9 +78,6 @@ class ParentChunkStore:
             db.close()
     
     def delete_chunk(self, chunk_id: str):
-        from app.models.db_parent_chunk import ParentChunk
-        from app.core.database import SessionLocal
-        
         db = SessionLocal()
         try:
             db.query(ParentChunk).filter(ParentChunk.chunk_id == chunk_id).delete()
