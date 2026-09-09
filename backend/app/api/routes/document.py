@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.models.db_user import User
-from app.schemas.auth import (
+from app.schemas.document import (
     DocumentBatchUploadResponse,
     DocumentDeleteResponse,
     DocumentInfo,

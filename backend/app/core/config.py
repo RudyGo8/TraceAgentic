@@ -30,6 +30,16 @@ ARK_API_KEY = os.getenv("ARK_API_KEY", "")
 MODEL = os.getenv("MODEL")
 BASE_URL = os.getenv("BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 GRADE_MODEL = os.getenv("GRADE_MODEL", "qwen-plus")
+# RAG辅助任务(改写/扩展/路由)用小模型,不配置则跟随MODEL
+REWRITE_MODEL = os.getenv("REWRITE_MODEL", MODEL)
+EXPAND_MODEL = os.getenv("EXPAND_MODEL", MODEL)
+ROUTER_MODEL = os.getenv("ROUTER_MODEL") or REWRITE_MODEL
+# 主模型失败时兜底
+FALLBACK_MODEL = os.getenv("FALLBACK_MODEL", "")
+# 主模型思考模式(知识问答场景检索内容已锚定答案,默认关闭提速)
+MAIN_MODEL_THINKING = os.getenv("MAIN_MODEL_THINKING", "false").lower() == "true"
+# 评测裁判模型(独立家族,避免自我偏好)
+EVAL_MODEL = os.getenv("EVAL_MODEL", GRADE_MODEL)
 
 # 向量模型
 EMBEDDER = os.getenv("EMBEDDER", "text-embedding-v2")
@@ -39,7 +49,7 @@ EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "1536"))
 # RAGAS 测评
 RAGAS_API_KEY = os.getenv("RAGAS_API_KEY", ARK_API_KEY)
 RAGAS_BASE_URL = os.getenv("RAGAS_BASE_URL", BASE_URL)
-RAGAS_LLM_MODEL = os.getenv("RAGAS_LLM_MODEL", GRADE_MODEL)
+RAGAS_LLM_MODEL = os.getenv("RAGAS_LLM_MODEL") or EVAL_MODEL
 RAGAS_EMBEDDING_MODEL = os.getenv("RAGAS_EMBEDDING_MODEL", EMBEDDER)
 
 # merge

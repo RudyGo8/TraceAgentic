@@ -1,15 +1,25 @@
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
-from app.core.config import AGENT_RECURSION_LIMIT, ARK_API_KEY, BASE_URL, MODEL
+from app.core.config import AGENT_RECURSION_LIMIT, ARK_API_KEY, BASE_URL, FALLBACK_MODEL, MAIN_MODEL_THINKING, MODEL
 
-_model = init_chat_model(
-      model=MODEL,
-      model_provider="openai",
-      api_key=ARK_API_KEY,
-      base_url=BASE_URL,
-      temperature=0.3,
-      stream_usage=True,
-  )
+
+def _build_model(model_name: str):
+    return init_chat_model(
+        model=model_name,
+        model_provider="openai",
+        api_key=ARK_API_KEY,
+        base_url=BASE_URL,
+        temperature=0.3,
+        stream_usage=True,
+        extra_body={"enable_thinking": MAIN_MODEL_THINKING},
+    )
+
+
+_model = _build_model(MODEL)
+
+# 主模型故障(限流/超时)时自动切FALLBACK_MODEL兜底
+if FALLBACK_MODEL:
+    _model = _model.with_fallbacks([_build_model(FALLBACK_MODEL)])
 
 def create_agent_instance(tools: list | None = None):
 
@@ -31,11 +41,12 @@ def create_agent_instance(tools: list | None = None):
             3. 除非用户明确询问底层模型、模型供应商或技术实现，否则不要主动暴露底层模型信息。
 
             【工具使用规则】
-            1. 当用户问题涉及上传文档、知识库、项目资料、业务文件、方案、计划、制度、规范、报告、会议纪要、合同、政策文件等内容时，必须先调用 search_knowledge_base。
-            2. 当用户问题中出现“这个文档”“这份材料”“附件”“知识库”“报告”“规划”“制度”“方案”“根据文档”“基于资料”等表述时，必须先调用 search_knowledge_base。
+            1. 当用户问题涉及上传文档、知识库、项目资料、业务文件、方案、计划、制度、规范、报告、会议纪要、合同、政策文件、技术指标、试验方法、精密度、参数、定义等内容时，必须先调用 search_knowledge_base。
+            2. 当用户问题中出现“文档”“文档中”“文档里”“这个文档”“这份材料”“附件”“知识库”“报告”“规划”“制度”“方案”“根据文档”“基于资料”“标准里”“规范中”等表述时，必须先调用 search_knowledge_base。
             3. 当用户询问“今天数据怎么样”“最近7天任务”“各站点对比”“状态分布”“成功率”“每日趋势”“任务量统计”等运营数据问题时，必须调用 execute_sql 查询 db_product_task_detail 表,没有查到数据就说没有，不要编造。
             4. 当问题明显属于寒暄、打招呼、纯闲聊、通用常识解释、普通编程概念说明，且不依赖知识库证据或运营数据时，可以直接回答。
             5. search_knowledge_base 每轮最多调用一次。如果返回 TOOL_CALL_LIMIT_REACHED，不要重复调用，直接基于已有结果继续回答。
+            6. 问题既像通用常识又涉及文档、标准、规范时，检索优先：多查一次的代价远小于答错文档内容。
 
             【知识库证据规则】
             6. 如果 search_knowledge_base 返回了内容，必须使用检索结果回答，即使部分匹配也要提取相关信息。

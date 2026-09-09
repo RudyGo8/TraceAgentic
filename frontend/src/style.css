@@ -789,7 +789,7 @@ textarea:focus {
 }
 
 .message-content {
-  max-width: min(860px, 78%);
+  max-width: min(1200px, 88%);
   padding: 16px 18px;
   border-radius: 20px;
   line-height: 1.82;
@@ -927,7 +927,7 @@ textarea:focus {
 }
 
 .message-meta {
-  max-width: min(860px, 78%);
+  max-width: min(1200px, 88%);
 }
 
 .trace-btn {

@@ -3,55 +3,34 @@
 @Author: GeChao
 @File: llm.py
 '''
-from langchain.chat_models import init_chat_model
-from app.core.config import ARK_API_KEY, BASE_URL, GRADE_MODEL, MODEL
+from functools import lru_cache
 
-_grader_model = None
-_router_model = None
-_default_model = None
+from langchain.chat_models import init_chat_model
+
+from app.core.config import ARK_API_KEY, BASE_URL, EXPAND_MODEL, GRADE_MODEL, ROUTER_MODEL
+
+
+@lru_cache(maxsize=4)
+def _cached_model(model_name: str, temperature: float):
+    return init_chat_model(
+        model=model_name,
+        model_provider="openai",
+        api_key=ARK_API_KEY,
+        base_url=BASE_URL,
+        temperature=temperature,
+        stream_usage=True,
+    )
 
 
 def _get_grader_model():
-    global _grader_model
-    if not ARK_API_KEY or not GRADE_MODEL:
-        return None
-    if _grader_model is None:
-        _grader_model = init_chat_model(
-            model=GRADE_MODEL,
-            model_provider="openai",
-            api_key=ARK_API_KEY,
-            base_url=BASE_URL,
-            temperature=0,
-            stream_usage=True,
-        )
-    return _grader_model
+    return _cached_model(GRADE_MODEL, 0) if ARK_API_KEY and GRADE_MODEL else None
 
 
 def _get_router_model():
-    global _router_model
-    if not ARK_API_KEY or not MODEL:
-        return None
-    if _router_model is None:
-        _router_model = init_chat_model(
-            model=MODEL,
-            model_provider="openai",
-            api_key=ARK_API_KEY,
-            base_url=BASE_URL,
-            temperature=0,
-            stream_usage=True,
-        )
-    return _router_model
+    # 问题改写节点:受限短文本生成,小模型即可(ROUTER_MODEL优先,回退REWRITE_MODEL)
+    return _cached_model(ROUTER_MODEL, 0) if ARK_API_KEY and ROUTER_MODEL else None
 
 
 def _get_default_model():
-    global _default_model
-    if _default_model is None:
-        _default_model = init_chat_model(
-            model=MODEL,
-            model_provider="openai",
-            api_key=ARK_API_KEY,
-            base_url=BASE_URL,
-            temperature=0.3,
-            stream_usage=True,
-        )
-        return _default_model
+    # 查询扩展(HyDE/stepback):小模型生成假设文档
+    return _cached_model(EXPAND_MODEL, 0.3)

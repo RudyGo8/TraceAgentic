@@ -3,6 +3,7 @@
 @Author: GeChao
 @File: retrieve_node.py
 '''
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from app.rag.formatter import format_docs
@@ -81,6 +82,25 @@ def retrieve_expanded(state: RAGState) -> RAGState:
     step_docs: List[dict] = []
     emit_rag_step("🔄", "使用扩展查询重新检索...", f"策略: {strategy}")
 
+    def _hyde_pipeline():
+        doc = state.get("hypothetical_doc") or generate_hypothetical_document(state["question"])
+        return retrieve_documents(doc, top_k=5)
+
+    def _stepback_pipeline():
+        return retrieve_documents(state.get("expanded_query") or state["question"], top_k=5)
+
+    # complex策略下两分支互不依赖,并行执行:耗时取max而非相加
+    retrieved_hyde = retrieved_stepback = None
+    if strategy == "complex":
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_hyde = pool.submit(_hyde_pipeline)
+            fut_step = pool.submit(_stepback_pipeline)
+            retrieved_hyde, retrieved_stepback = fut_hyde.result(), fut_step.result()
+    elif strategy == "hyde":
+        retrieved_hyde = _hyde_pipeline()
+    elif strategy == "step_back":
+        retrieved_stepback = _stepback_pipeline()
+
     results: List[dict] = []
     rerank_applied_any = False
     rerank_enabled_any = False
@@ -96,10 +116,7 @@ def retrieve_expanded(state: RAGState) -> RAGState:
     auto_merge_replaced_chunks = 0
     auto_merge_steps = 0
 
-    if strategy in ("hyde", "complex"):
-        hypothetical_doc = state.get("hypothetical_doc") or generate_hypothetical_document(state["question"])
-        retrieved_hyde = retrieve_documents(hypothetical_doc, top_k=5)
-        # 再次走检索
+    if retrieved_hyde is not None:
         hyde_docs = retrieved_hyde.get("docs", [])
         results.extend(hyde_docs)
         hyde_meta = retrieved_hyde.get("meta", {})
@@ -127,9 +144,7 @@ def retrieve_expanded(state: RAGState) -> RAGState:
         auto_merge_replaced_chunks += int(hyde_meta.get("auto_merge_replaced_chunks") or 0)
         auto_merge_steps += int(hyde_meta.get("auto_merge_steps") or 0)
 
-    if strategy in ("step_back", "complex"):
-        expanded_query = state.get("expanded_query") or state["question"]
-        retrieved_stepback = retrieve_documents(expanded_query, top_k=5)
+    if retrieved_stepback is not None:
         step_docs = retrieved_stepback.get("docs", [])
         results.extend(step_docs)
         # 仅保留用于融合的分支结果，避免重复追加。
